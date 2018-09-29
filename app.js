@@ -48,7 +48,10 @@ const app = express();
 /**
  * Connect to MongoDB.
  */
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true });
+mongoose.set('useFindAndModify', false);
+mongoose.set('useCreateIndex', true);
+mongoose.set('useNewUrlParser', true);
+mongoose.connect(process.env.MONGODB_URI);
 mongoose.connection.on('error', (err) => {
   console.error(err);
   console.log('%s MongoDB connection error. Please make sure MongoDB is running.', chalk.red('✗'));
@@ -101,20 +104,20 @@ app.use((req, res, next) => {
 });
 app.use((req, res, next) => {
   // After successful login, redirect back to the intended page
-  if (!req.user &&
-    req.path !== '/login' &&
-    req.path !== '/signup' &&
-    !req.path.match(/^\/auth/) &&
-    !req.path.match(/\./)) {
+  if (!req.user
+    && req.path !== '/login'
+    && req.path !== '/signup'
+    && !req.path.match(/^\/auth/)
+    && !req.path.match(/\./)) {
     req.session.returnTo = req.originalUrl;
-  } else if (req.user &&
-    (req.path === '/account' || req.path.match(/^\/api/))) {
+  } else if (req.user
+    && (req.path === '/account' || req.path.match(/^\/api/))) {
     req.session.returnTo = req.originalUrl;
   }
   next();
 });
 app.use('/', express.static(path.join(__dirname, 'public'), { maxAge: 31557600000 }));
-app.use('/js/lib', express.static(path.join(__dirname, 'node_modules/popper.js/dist'), { maxAge: 31557600000 }));
+app.use('/js/lib', express.static(path.join(__dirname, 'node_modules/popper.js/dist/umd'), { maxAge: 31557600000 }));
 app.use('/js/lib', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/js'), { maxAge: 31557600000 }));
 app.use('/js/lib', express.static(path.join(__dirname, 'node_modules/jquery/dist'), { maxAge: 31557600000 }));
 app.use('/webfonts', express.static(path.join(__dirname, 'node_modules/@fortawesome/fontawesome-free/webfonts'), { maxAge: 31557600000 }));
@@ -227,6 +230,11 @@ app.get('/auth/pinterest/callback', passport.authorize('pinterest', { failureRed
 if (process.env.NODE_ENV === 'development') {
   // only use in development
   app.use(errorHandler());
+} else {
+  app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(500).send('Server Error');
+  });
 }
 
 /**
